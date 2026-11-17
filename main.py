@@ -16,8 +16,12 @@ Method (fitted on the case's own comparables, nothing else):
   So for each hour h we fit, over the comparable launches, the line
   L_h = a_h + b_h * ln(p1), and predict this case's L_h from its own hour-1
   print p1 (clamped to the comparables' ln(p1) range, so a record-breaking
-  hour 1 never extrapolates the line).  The five quantiles are the prediction
-  plus the empirical quantiles of that hour's regression residuals, so the
+  hour 1 never extrapolates the line).  The per-hour slopes are then
+  smoothed over neighbouring hours (an 11-hour centred moving average,
+  each hour's intercept refitted): one hour's slope is estimated from
+  only ~19 curves, so it is noisy, while the true slope changes slowly
+  with the hour.  The five quantiles are the prediction plus the
+  empirical quantiles of that hour's regression residuals, so the
   spread is the spread the comparables actually showed around the line, not
   an assumed one.
 
@@ -175,10 +179,31 @@ def forecast_case(case):
     lo, hi = min(xs), max(xs)
     x_case = min(max(math.log(p1), lo), hi)
 
-    rows = []
+    # One line per hour, then smooth the slopes over neighbouring hours.
+    # A single hour's slope comes from ~19 curves, so it is noisy, while
+    # the true slope moves slowly with the hour.  An 11-hour centred
+    # moving average of the slopes, with each hour's intercept refitted
+    # as mean(y - b_smooth * x), cuts that noise: measured on the
+    # practice cases and on leave-one-out over the 18 big comparables
+    # it helps a little on both (practice 0.1795 -> 0.1784, LOO
+    # 0.2699 -> 0.2656).  Wider windows turn back up again, and one
+    # shared slope is far worse, so 11 hours is the measured sweet spot.
+    fits = []
     for hour in hours:
         ratios = [math.log(curve[hour - 1] / curve[0]) for curve in pool]
-        a, b = ols(xs, ratios)
+        fits.append((ratios,) + ols(xs, ratios))
+    slopes = [b for _, _, b in fits]
+    smoothed = []
+    for i, (ratios, _, _) in enumerate(fits):
+        window = slopes[max(0, i - 5):i + 6]
+        b_smooth = sum(window) / len(window)
+        a_smooth = sum(y - b_smooth * x for x, y in zip(xs, ratios)) / len(xs)
+        smoothed.append((a_smooth, b_smooth))
+
+    rows = []
+    for i, hour in enumerate(hours):
+        ratios = fits[i][0]
+        a, b = smoothed[i]
         centre = a + b * x_case
         residuals = [y - (a + b * x) for x, y in zip(xs, ratios)]
         quantiles = []

@@ -22,9 +22,13 @@ the case ships:
 So for each hour `h` the program fits, over the comparable launches, the
 line `L_h = a_h + b_h * ln(p1)` and predicts this case's `L_h` from its own
 hour-1 print (clamped to the comparables' `ln(p1)` range, so a
-record-breaking hour 1 never extrapolates the line). The five quantiles are
-the prediction plus the empirical quantiles of that hour's regression
-residuals — the spread the comparables actually showed around the line.
+record-breaking hour 1 never extrapolates the line). The per-hour slopes
+are then smoothed over neighbouring hours (an 11-hour centred moving
+average, each hour's intercept refitted): one hour's slope is estimated
+from only ~19 curves, so it is noisy, while the true slope changes
+slowly with the hour. The five quantiles are the prediction plus the
+empirical quantiles of that hour's regression residuals — the spread the
+comparables actually showed around the line.
 
 **Pool.** Comparables with a complete 24-hour release-day curve whose
 hour-1 print is at least 5,000 viewers, excluding launches the case marks
@@ -42,14 +46,14 @@ cases exactly) and scored with the rules' own formula:
 
 | case | loss | typical miss | 90% coverage |
 | ---- | ---: | ---: | ---: |
-| p00 Marvel's Wolverine | 0.248 | 47.0% | 0.70 |
-| p01 Red Dead Redemption 2 | 0.168 | 28.8% | 0.96 |
-| p02 God of War Ragnarök | 0.117 | 17.8% | 0.96 |
-| p03 Marvel's Spider-Man 2 | 0.186 | 30.2% | 0.78 |
-| **mean** | **0.180** | | |
+| p00 Marvel's Wolverine | 0.248 | 50.4% | 0.70 |
+| p01 Red Dead Redemption 2 | 0.171 | 31.6% | 0.96 |
+| p02 God of War Ragnarök | 0.112 | 16.9% | 1.00 |
+| p03 Marvel's Spider-Man 2 | 0.183 | 29.3% | 0.83 |
+| **mean** | **0.178** | | |
 
 House baseline on the same cases: **0.387**. Leave-one-out over the 18
-big comparable launches: **0.270** vs the baseline's 0.392.
+big comparable launches: **0.266** vs the baseline's 0.392.
 
 ## Run
 
